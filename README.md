@@ -6,6 +6,7 @@ Spring Boot 애플리케이션을 위한 Excel 처리 라이브러리입니다. 
 
 - **어노테이션 기반 설정** - 시트명, 헤더, 스타일, 포맷을 어노테이션으로 간편하게 설정
 - **양방향 매핑** - Excel ↔ Java Class 자동 변환
+- **다국어 헤더 지원** - 한글/영문 헤더 선택 기능 (ExcelLanguage.KO/EN)
 - **Spring Boot 통합** - MultipartFile 업로드, HttpServletResponse 다운로드 지원
 - **한글 파일명 지원** - 브라우저 호환 한글 파일명 인코딩 자동 처리
 - **빈 열 자동 숨김** - 데이터가 없는 컬럼 자동 숨김 기능
@@ -30,8 +31,7 @@ repositories {
 
 dependencies {
     implementation("com.github.{GitHub사용자명}:youyoung-excel:{버전}")
-    // 예: implementation("com.github.youyoung:youyoung-excel:1.0.0")
-    // 또는 최신 커밋: implementation("com.github.youyoung:youyoung-excel:main-SNAPSHOT")
+    // 예: implementation 'com.github.youyoung-dev-git:youyong-excel:main-SNAPSHOT'
 }
 ```
 
@@ -184,13 +184,14 @@ public class OrderExcel { }
 필드에 적용하여 컬럼 속성을 설정합니다.
 
 ```java
-@ExcelColumn(header = "상품명", order = 1, width = 25, hideIfEmpty = true)
+@ExcelColumn(header = "상품명", headerEn = "Product Name", order = 1, width = 25, hideIfEmpty = true)
 private String productName;
 ```
 
 | 속성 | 타입 | 기본값 | 설명 |
 |------|------|--------|------|
-| header | String | (필수) | 헤더에 표시될 컬럼명 |
+| header | String | (필수) | 헤더에 표시될 컬럼명 (한글) |
+| headerEn | String | "" | 영문 헤더 (미지정 시 header 값 사용) |
 | order | int | 0 | 컬럼 순서 (낮을수록 왼쪽) |
 | width | int | -1 | 컬럼 너비 (-1: 자동) |
 | hideIfEmpty | boolean | false | 모든 값이 비어있으면 컬럼 숨김 |
@@ -303,6 +304,62 @@ private BigDecimal settlementAmount;
 
 ---
 
+## 다국어 헤더 지원
+
+Excel 파일 생성 시 한글 또는 영문 헤더를 선택할 수 있습니다.
+
+### ExcelLanguage 열거형
+
+| 값 | 설명 |
+|----|------|
+| KO | 한글 헤더 (기본값) |
+| EN | 영문 헤더 |
+
+### 사용 방법
+
+**1. 모델 클래스에 영문 헤더 정의**
+
+```java
+@ExcelSheet(name = "사용자 목록")
+public class UserExcel {
+
+    @ExcelColumn(header = "이름", headerEn = "Name", order = 1)
+    private String name;
+
+    @ExcelColumn(header = "이메일", headerEn = "Email", order = 2)
+    private String email;
+
+    @ExcelColumn(header = "가입일", headerEn = "Join Date", order = 3)
+    @ExcelDateFormat("yyyy-MM-dd")
+    private LocalDate joinDate;
+}
+```
+
+**2. 언어 선택하여 Excel 생성**
+
+```java
+import net.youyoung.excel.core.ExcelLanguage;
+
+// 한글 헤더 (기본값)
+byte[] koreanExcel = ExcelWriter.write(users, UserExcel.class);
+byte[] koreanExcel = ExcelWriter.write(users, UserExcel.class, ExcelLanguage.KO);
+
+// 영문 헤더
+byte[] englishExcel = ExcelWriter.write(users, UserExcel.class, ExcelLanguage.EN);
+```
+
+**3. Fallback 동작**
+
+`headerEn`이 지정되지 않은 컬럼은 자동으로 `header` 값(한글)을 사용합니다.
+
+```java
+// headerEn 미지정 시
+@ExcelColumn(header = "특이사항", order = 4)  // EN 선택 시에도 "특이사항"으로 표시
+private String note;
+```
+
+---
+
 ## API 레퍼런스
 
 ### ExcelReader - Excel 읽기
@@ -335,23 +392,33 @@ Java 객체를 Excel 파일로 변환합니다.
 ```java
 import net.youyoung.excel.core.ExcelWriter;
 import net.youyoung.excel.core.ExcelFile;
+import net.youyoung.excel.core.ExcelLanguage;
 
-// byte 배열로 변환
+// byte 배열로 변환 (기본: 한글 헤더)
 byte[] bytes = ExcelWriter.write(users, UserExcel.class);
+
+// 영문 헤더로 변환
+byte[] bytesEn = ExcelWriter.write(users, UserExcel.class, ExcelLanguage.EN);
 
 // 파일명과 함께 ExcelFile 객체로 반환
 ExcelFile file = ExcelWriter.writeWithFileName(users, UserExcel.class, "사용자목록");
 // file.getContent() - byte 배열
 // file.getFileName() - "사용자목록.xlsx"
 
+// 영문 헤더로 ExcelFile 생성
+ExcelFile fileEn = ExcelWriter.writeWithFileName(users, UserExcel.class, "users", ExcelLanguage.EN);
+
 // OutputStream으로 출력
 ExcelWriter.writeTo(outputStream, users, UserExcel.class);
+ExcelWriter.writeTo(outputStream, users, UserExcel.class, ExcelLanguage.EN); // 영문
 
 // File로 저장
 ExcelWriter.writeTo(new File("output.xlsx"), users, UserExcel.class);
+ExcelWriter.writeTo(new File("output.xlsx"), users, UserExcel.class, ExcelLanguage.EN); // 영문
 
 // 파일 경로로 저장
 ExcelWriter.writeTo("/path/to/output.xlsx", users, UserExcel.class);
+ExcelWriter.writeTo("/path/to/output.xlsx", users, UserExcel.class, ExcelLanguage.EN); // 영문
 ```
 
 ### ExcelHttpResponse - Spring HTTP 응답 (다운로드)
@@ -360,12 +427,19 @@ HttpServletResponse를 통해 Excel 파일을 다운로드합니다.
 
 ```java
 import net.youyoung.excel.spring.ExcelHttpResponse;
+import net.youyoung.excel.core.ExcelLanguage;
 
-// 기본 방식 (메모리에 먼저 생성 후 응답)
+// 기본 방식 (메모리에 먼저 생성 후 응답, 한글 헤더)
 ExcelHttpResponse.write(response, users, UserExcel.class, "사용자목록.xlsx");
+
+// 영문 헤더로 다운로드
+ExcelHttpResponse.write(response, users, UserExcel.class, "users.xlsx", ExcelLanguage.EN);
 
 // 스트리밍 방식 (대용량 데이터에 적합)
 ExcelHttpResponse.writeStream(response, users, UserExcel.class, "사용자목록.xlsx");
+
+// 스트리밍 + 영문 헤더
+ExcelHttpResponse.writeStream(response, users, UserExcel.class, "users.xlsx", ExcelLanguage.EN);
 ```
 
 ### ExcelMultipartFile - Spring 파일 업로드
@@ -406,35 +480,35 @@ import java.time.LocalDateTime;
 )
 public class OrderExcel {
 
-    @ExcelColumn(header = "주문번호", order = 1, width = 15)
+    @ExcelColumn(header = "주문번호", headerEn = "Order ID", order = 1, width = 15)
     @ExcelStyle(fontColor = ExcelColor.BLUE, bold = true)
     private String orderId;
 
-    @ExcelColumn(header = "고객명", order = 2, width = 12)
+    @ExcelColumn(header = "고객명", headerEn = "Customer", order = 2, width = 12)
     private String customerName;
 
-    @ExcelColumn(header = "상품명", order = 3, width = 25)
+    @ExcelColumn(header = "상품명", headerEn = "Product", order = 3, width = 25)
     private String productName;
 
-    @ExcelColumn(header = "수량", order = 4, width = 8)
+    @ExcelColumn(header = "수량", headerEn = "Qty", order = 4, width = 8)
     @ExcelStyle(align = ExcelAlign.CENTER)
     private Integer quantity;
 
-    @ExcelColumn(header = "단가", order = 5, width = 12)
+    @ExcelColumn(header = "단가", headerEn = "Unit Price", order = 5, width = 12)
     @ExcelStyle(align = ExcelAlign.RIGHT)
     @ExcelNumberFormat("#,###원")
     private Integer unitPrice;
 
-    @ExcelColumn(header = "총액", order = 6, width = 15)
+    @ExcelColumn(header = "총액", headerEn = "Total", order = 6, width = 15)
     @ExcelStyle(align = ExcelAlign.RIGHT, bold = true, backgroundColor = ExcelColor.LIGHT_YELLOW)
     @ExcelNumberFormat("#,###원")
     private Integer totalAmount;
 
-    @ExcelColumn(header = "주문일시", order = 7, width = 20)
+    @ExcelColumn(header = "주문일시", headerEn = "Order Date", order = 7, width = 20)
     @ExcelDateFormat("yyyy-MM-dd HH:mm")
     private LocalDateTime orderDateTime;
 
-    @ExcelColumn(header = "비고", order = 8, width = 20, hideIfEmpty = true)
+    @ExcelColumn(header = "비고", headerEn = "Note", order = 8, width = 20, hideIfEmpty = true)
     private String note;
 
     // 생성자, Getter, Setter 생략
@@ -444,6 +518,8 @@ public class OrderExcel {
 ### Controller 예제
 
 ```java
+import net.youyoung.excel.core.ExcelLanguage;
+
 @RestController
 @RequestMapping("/api/orders")
 public class OrderController {
@@ -454,12 +530,16 @@ public class OrderController {
     public void downloadOrders(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+            @RequestParam(defaultValue = "KO") ExcelLanguage lang,  // 언어 선택 파라미터
             HttpServletResponse response) throws IOException {
 
         List<OrderExcel> orders = orderService.getOrdersForExcel(startDate, endDate);
 
-        String fileName = String.format("주문내역_%s_%s.xlsx", startDate, endDate);
-        ExcelHttpResponse.write(response, orders, OrderExcel.class, fileName);
+        String fileName = lang == ExcelLanguage.EN
+            ? String.format("orders_%s_%s.xlsx", startDate, endDate)
+            : String.format("주문내역_%s_%s.xlsx", startDate, endDate);
+
+        ExcelHttpResponse.write(response, orders, OrderExcel.class, fileName, lang);
     }
 
     @PostMapping("/excel")
@@ -476,6 +556,10 @@ public class OrderController {
     }
 }
 ```
+
+> **API 호출 예시**:
+> - 한글 헤더: `GET /api/orders/excel?startDate=2024-01-01&endDate=2024-12-31`
+> - 영문 헤더: `GET /api/orders/excel?startDate=2024-01-01&endDate=2024-12-31&lang=EN`
 
 ---
 
