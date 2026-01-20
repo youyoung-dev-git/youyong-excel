@@ -73,6 +73,18 @@ public class SheetMetadata {
                 .toList();
     }
 
+    /**
+     * Get headers for the specified language.
+     *
+     * @param language the language to get headers for
+     * @return list of header strings in the specified language
+     */
+    public List<String> getHeaders(ExcelLanguage language) {
+        return columns.stream()
+                .map(col -> col.getHeader(language))
+                .toList();
+    }
+
     public ExcelColor getHeaderBackgroundColor() {
         return headerBackgroundColor;
     }

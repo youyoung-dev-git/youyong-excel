@@ -13,6 +13,7 @@ public class ColumnMetadata {
 
     private final Field field;
     private final String header;
+    private final String headerEn;
     private final int order;
     private final int width;
     private final boolean hideIfEmpty;
@@ -31,6 +32,7 @@ public class ColumnMetadata {
     private ColumnMetadata(Builder builder) {
         this.field = builder.field;
         this.header = builder.header;
+        this.headerEn = builder.headerEn;
         this.order = builder.order;
         this.width = builder.width;
         this.hideIfEmpty = builder.hideIfEmpty;
@@ -52,6 +54,7 @@ public class ColumnMetadata {
         Builder builder = new Builder()
                 .field(field)
                 .header(column.header())
+                .headerEn(column.headerEn())
                 .order(column.order())
                 .width(column.width())
                 .hideIfEmpty(column.hideIfEmpty());
@@ -92,6 +95,23 @@ public class ColumnMetadata {
 
     public String getHeader() {
         return header;
+    }
+
+    /**
+     * Get header by language. Falls back to Korean header if English header is not specified.
+     *
+     * @param language the language to get header for
+     * @return the header in the specified language
+     */
+    public String getHeader(ExcelLanguage language) {
+        if (language == ExcelLanguage.EN && headerEn != null && !headerEn.isEmpty()) {
+            return headerEn;
+        }
+        return header;
+    }
+
+    public String getHeaderEn() {
+        return headerEn;
     }
 
     public int getOrder() {
@@ -149,6 +169,7 @@ public class ColumnMetadata {
     private static class Builder {
         private Field field;
         private String header;
+        private String headerEn;
         private int order = 0;
         private int width = -1;
         private boolean hideIfEmpty = false;
@@ -167,6 +188,11 @@ public class ColumnMetadata {
 
         Builder header(String header) {
             this.header = header;
+            return this;
+        }
+
+        Builder headerEn(String headerEn) {
+            this.headerEn = headerEn;
             return this;
         }
 

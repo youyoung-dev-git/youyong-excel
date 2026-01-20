@@ -13,9 +13,15 @@ import java.lang.annotation.Target;
 public @interface ExcelColumn {
 
     /**
-     * Column header name (required).
+     * Column header name in Korean (required).
      */
     String header();
+
+    /**
+     * Column header name in English (optional).
+     * Falls back to header() if not specified.
+     */
+    String headerEn() default "";
 
     /**
      * Column order (0-based). Lower values appear first.
